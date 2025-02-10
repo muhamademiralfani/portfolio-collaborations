@@ -1,9 +1,11 @@
-import express from "express";
-import { connectDB } from "./config/db.js";
+import express, { Router } from 'express';
+import { connectDB } from './config/db.js';
+import router from './routes/index.js';
 
 const app = express();
 const PORT = 4000;
 
+app.use(router);
 
 app.listen(PORT, () => {
   connectDB();
