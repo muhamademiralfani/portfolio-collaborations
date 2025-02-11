@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const heroSchema = new mongoose.Schema ({
+    _id: {
+        type: String,
+        required: true
+    },
     image: {
         type: String,
         required: false
