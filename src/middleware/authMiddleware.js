@@ -1,18 +1,26 @@
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
+import User from "../models/userModel.js";
 
-const verifyToken = (req, res, next) => {
-    const token = req.headers.authorization?.split(" ")[1]; // Extract Token
-    if(!token) return res.status(401).json({
-        message : "Unauthorized"
-    }) 
+export const authMiddleware = async (req, res, next) => {
+  const token = req.header("Authorization");
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) =>  {
-        if(err) return res.status(403).json({
-            message : "Invalid token"
-        })
-        req.user = decoded
-        next()
-    })
-}
+  if (!token) {
+    return res.status(401).json({ message: "Access Denied. No Token Provided" });
+  }
 
-export default verifyToken
+  try {
+   
+    const decoded = jwt.verify(token.split(" ")[1], process.env.JWT_SECRET);
+    req.user = decoded; 
+
+   
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User Not Found" });
+    }
+
+    next(); 
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid Token" });
+  }
+};
