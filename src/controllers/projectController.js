@@ -120,11 +120,13 @@ export const deleteProject = async (req, res) => {
 
     const deleteImage = await Promise.all(
       images.map((imageLink) => {
-        const arrayLink = imageLink.split('/');
-        const publicId = `${arrayLink[arrayLink.length - 2]}/${arrayLink[arrayLink.length - 1].split(".")[0]}`
+        const arrayLink = imageLink.split("/");
+        const publicId = `${arrayLink[arrayLink.length - 2]}/${
+          arrayLink[arrayLink.length - 1].split(".")[0]
+        }`;
         return cloudinary.uploader.destroy(publicId);
       })
-    );    
+    );
 
     await Project.findByIdAndDelete(id);
     res.status(200).json({ success: true, message: "Project deleted" });
@@ -140,28 +142,31 @@ export const updateProject = async (req, res) => {
   const images = req.files;
 
   try {
-    const uploadResults = await Promise.all(
-      images.map(async (file, index) => {
-        const publicId = `${id}-${index}`;
-        const result = await cloudinary.uploader.upload(
-          path.resolve(file.path),
-          {
-            folder: "projects",
-            public_id: publicId,
-            overwrite: true,
-          }
-        );
-        fs.unlinkSync(file.path);
-        return result.secure_url;
-      })
-    );
+    if (images.length > 0) {
+      console.log('tidak boleh jalan');
+      const uploadResults = await Promise.all(
+        images.map(async (file, index) => {
+          const publicId = `${id}-${index}`;
+          const result = await cloudinary.uploader.upload(
+            path.resolve(file.path),
+            {
+              folder: "projects",
+              public_id: publicId,
+              overwrite: true,
+            }
+          );
+          fs.unlinkSync(file.path);
+          return result.secure_url;
+        })
+      );
+      project.images = uploadResults;
+    }
 
     const technologies = project.technologies
       .trim()
       .split(",")
       .map((tech) => tech.trim());
 
-    project.images = uploadResults;
     project.technologies = technologies;
     const updatedProject = await Project.findByIdAndUpdate(id, project, {
       new: true, // Return the updated document
