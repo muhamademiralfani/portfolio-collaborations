@@ -1,6 +1,10 @@
+import cloudinary from "../config/cloudinary.js";
+import path from "path";
+import fs from "fs";
 import Project from "../models/projectModel.js";
 export const createProject = async (req, res) => {
   const project = req.body;
+  const images = req.files;
   const errors = [];
 
   if (!project.title) {
@@ -18,7 +22,7 @@ export const createProject = async (req, res) => {
     errors.push({ path: "technologies", message });
   }
 
-  if (!project.images) {
+  if (!images) {
     const message = "Images is required";
     errors.push({ path: "images", message });
   }
@@ -45,6 +49,29 @@ export const createProject = async (req, res) => {
 
   try {
     const newProject = Project(project);
+    const uploadResults = await Promise.all(
+      images.map(async (file, index) => {
+        const publicId = `${newProject._id}-${index}`;
+        const result = await cloudinary.uploader.upload(
+          path.resolve(file.path),
+          {
+            folder: "projects",
+            public_id: publicId,
+            overwrite: true,
+          }
+        );
+        fs.unlinkSync(file.path);
+        return result.secure_url;
+      })
+    );
+
+    const technologies = project.technologies
+      .trim()
+      .split(",")
+      .map((tech) => tech.trim());
+
+    newProject.images = uploadResults;
+    newProject.technologies = technologies;
     await newProject.save();
     res.status(201).json({
       success: true,
@@ -88,6 +115,19 @@ export const getProjectDetail = async (req, res) => {
 export const deleteProject = async (req, res) => {
   const { id } = req.params;
   try {
+    const data = await Project.findById(id);
+    const images = data.images;
+
+    const deleteImage = await Promise.all(
+      images.map((imageLink) => {
+        const arrayLink = imageLink.split("/");
+        const publicId = `${arrayLink[arrayLink.length - 2]}/${
+          arrayLink[arrayLink.length - 1].split(".")[0]
+        }`;
+        return cloudinary.uploader.destroy(publicId);
+      })
+    );
+
     await Project.findByIdAndDelete(id);
     res.status(200).json({ success: true, message: "Project deleted" });
   } catch (error) {
@@ -99,7 +139,35 @@ export const deleteProject = async (req, res) => {
 export const updateProject = async (req, res) => {
   const { id } = req.params;
   const project = req.body;
+  const images = req.files;
+
   try {
+    if (images.length > 0) {
+      console.log('tidak boleh jalan');
+      const uploadResults = await Promise.all(
+        images.map(async (file, index) => {
+          const publicId = `${id}-${index}`;
+          const result = await cloudinary.uploader.upload(
+            path.resolve(file.path),
+            {
+              folder: "projects",
+              public_id: publicId,
+              overwrite: true,
+            }
+          );
+          fs.unlinkSync(file.path);
+          return result.secure_url;
+        })
+      );
+      project.images = uploadResults;
+    }
+
+    const technologies = project.technologies
+      .trim()
+      .split(",")
+      .map((tech) => tech.trim());
+
+    project.technologies = technologies;
     const updatedProject = await Project.findByIdAndUpdate(id, project, {
       new: true, // Return the updated document
     });

@@ -1,16 +1,15 @@
 import express from "express";
-import multer from "multer";
 import {
   getHero,
   updateHero,
   createHero,
 } from "../controllers/heroControllers.js";
+import { uploadSingle } from "../middleware/uploadMiddleware.js";
 
-const upload = multer({ dest: "../uploads/" });
 const router = express.Router();
 
 router.get("/", getHero);
-router.post("/", upload.single("image"), createHero);
-router.put("/", upload.single("image"), updateHero);
+router.post("/", uploadSingle, createHero);
+router.put("/", uploadSingle, updateHero);
 
 export default router;
