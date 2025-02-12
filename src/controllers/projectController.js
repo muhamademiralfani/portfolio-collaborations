@@ -1,6 +1,11 @@
+import cloudinary from "../config/cloudinary.js";
+import path from "path";
+import fs from "fs";
 import Project from "../models/projectModel.js";
 export const createProject = async (req, res) => {
   const project = req.body;
+  const images = req.files;
+  console.log(images);
   const errors = [];
 
   if (!project.title) {
@@ -18,7 +23,7 @@ export const createProject = async (req, res) => {
     errors.push({ path: "technologies", message });
   }
 
-  if (!project.images) {
+  if (!images) {
     const message = "Images is required";
     errors.push({ path: "images", message });
   }
@@ -44,6 +49,24 @@ export const createProject = async (req, res) => {
   }
 
   try {
+    const uploadResults = await Promise.all(
+      images.map(async (file, index) => {
+        const publicId = `${project.slug}-${index}`;
+        const result = await cloudinary.uploader.upload(path.resolve(file.path), {
+          folder: "projects",
+          public_id: publicId,
+          overwrite: true
+        });
+        fs.unlinkSync(file.path);
+        return result.secure_url;
+      })
+    );
+
+    const technologies = project.technologies.trim().split(',').map(tech => tech.trim());
+
+    project.images = uploadResults;
+    project.technologies = technologies;
+    
     const newProject = Project(project);
     await newProject.save();
     res.status(201).json({
@@ -97,10 +120,13 @@ export const deleteProject = async (req, res) => {
 };
 
 export const updateProject = async (req, res) => {
-  const { id } = req.params;
+  const { slug } = req.params;
   const project = req.body;
+  const images = req.files;
+
   try {
-    const updatedProject = await Project.findByIdAndUpdate(id, project, {
+    
+    const updatedProject = await Project.findOneAndUpdate(slug, project, {
       new: true, // Return the updated document
     });
     res.status(200).json({ success: true, data: updatedProject });
