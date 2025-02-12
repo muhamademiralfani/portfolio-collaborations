@@ -31,15 +31,20 @@ export const createProject = async (req, res) => {
   if (!project.slug) {
     const message = "Slug is required";
     errors.push({ path: "slug", message });
+  } else {
+    const existingProject = await Project.findOne({ slug: project.slug });
+    if (existingProject) {
+      const message = "Slug already exists";
+      errors.push({ path: "slug", message });
+    }
   }
 
   if (errors.length > 0) {
     return res.status(400).json({ success: false, errors });
   }
 
-  const newProject = Project(project);
-
   try {
+    const newProject = Project(project);
     await newProject.save();
     res.status(201).json({
       success: true,
