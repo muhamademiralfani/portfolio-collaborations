@@ -11,7 +11,10 @@ app.use(express.json());
 app.use('/api', routes);
 
 
-app.listen(PORT, () => {
-  connectDB();
-  console.log(`Example server in http://localhost:${PORT}`);
-});
+// app.listen(PORT, () => {
+//   connectDB();
+//   console.log(`Example server in http://localhost:${PORT}`);
+// });
+
+connectDB();
+export default app;
